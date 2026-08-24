@@ -73,7 +73,7 @@ func (c Config) SessionDir(agent, session string) string {
 func Run(ctx context.Context, cfg Config) (Result, error) {
 	result := Result{Outcome: OutcomeFailed}
 
-	doc, sessionDir, err := prepare(cfg)
+	doc, sessionDir, err := prepare(ctx, cfg)
 	if err != nil {
 		result.Summary = err.Error()
 		writeResult(cfg, sessionDir, result)
@@ -88,7 +88,7 @@ func Run(ctx context.Context, cfg Config) (Result, error) {
 	return result, err
 }
 
-func prepare(cfg Config) (task.File, string, error) {
+func prepare(ctx context.Context, cfg Config) (task.File, string, error) {
 	var doc task.File
 	raw, err := os.ReadFile(cfg.TaskFile)
 	if err != nil {
@@ -101,7 +101,14 @@ func prepare(cfg Config) (task.File, string, error) {
 	if err := os.MkdirAll(sessionDir, 0o755); err != nil {
 		return doc, "", fmt.Errorf("creating session dir: %w", err)
 	}
+	os.Setenv("HOME", cfg.Home)
+	if err := os.MkdirAll(cfg.Home, 0o755); err != nil {
+		return doc, sessionDir, err
+	}
 	if err := seedCredentials(cfg); err != nil {
+		return doc, sessionDir, err
+	}
+	if err := prepareGitAuth(ctx, cfg, doc.GitURL); err != nil {
 		return doc, sessionDir, err
 	}
 	return doc, sessionDir, nil

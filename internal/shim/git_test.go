@@ -33,7 +33,7 @@ func TestWorkspaceGitFlow(t *testing.T) {
 		t.Fatal(err)
 	}
 	gitTest(t, seed, "add", ".")
-	gitTest(t, seed, "-c", "user.name=Seed", "-c", "user.email=seed@test", "commit", "-m", "seed")
+	gitTest(t, seed, "-c", "user.name=Seed", "-c", "user.email=seed@test", "-c", "commit.gpgsign=false", "commit", "-m", "seed")
 	gitTest(t, base, "clone", "--bare", "seed", "origin.git")
 	origin := filepath.Join(base, "origin.git")
 
@@ -58,7 +58,7 @@ func TestWorkspaceGitFlow(t *testing.T) {
 		t.Fatal(err)
 	}
 	gitTest(t, repo.Dir, "add", ".")
-	gitTest(t, repo.Dir, "commit", "-m", "session work")
+	gitTest(t, repo.Dir, "-c", "commit.gpgsign=false", "commit", "-m", "session work")
 
 	commits, err := repo.SessionCommits(ctx, "main", "dispatch/t1")
 	if err != nil || commits != 1 {
