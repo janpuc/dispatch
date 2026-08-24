@@ -1,0 +1,41 @@
+apiVersion: dispatch.janpuc.com/v1alpha1
+kind: Agent
+metadata:
+  name: duty
+  namespace: dispatch
+spec:
+  description: >-
+    Always-on watch officer for the homelab. Investigates alerts with read-only
+    cluster access, runs the nightly patrol, proposes fixes as branches in the
+    gitops repo, and files work to project agents.
+  runner:
+    image: ghcr.io/janpuc/dispatch-runner:base
+    cli: claude
+    credentialsRef:
+      name: claude-max-primary
+  models:
+    session: claude-fable-5
+    triage: claude-haiku-4-5
+  workspaceRef:
+    name: homelab
+  serviceAccountName: dispatch-agent-readonly
+  git:
+    author: "Duty Agent <duty@dispatch.local>"
+    pushBranches:
+      - dispatch/*
+  budgets:
+    maxConcurrentSessions: 1
+    perSession:
+      maxTurns: 60
+      timeout: 45m
+    daily:
+      maxSessions: 20
+      maxCostUSD: 15
+    subscriptionWindowReserve: 0.25
+  a2a:
+    expose: true
+    skills:
+      - id: investigate-alert
+        description: Investigate a firing Prometheus alert and produce a findings report
+      - id: patrol
+        description: Nightly homelab patrol and review of yesterday's sessions

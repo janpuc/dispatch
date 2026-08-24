@@ -1,0 +1,43 @@
+apiVersion: dispatch.janpuc.com/v1alpha1
+kind: Session
+metadata:
+  name: duty-20260824-0212-a7f3
+  namespace: dispatch
+  labels:
+    dispatch.janpuc.com/agent: duty
+    dispatch.janpuc.com/trigger: alerts-to-duty
+spec:
+  agentRef:
+    name: duty
+  provenance:
+    trigger: alerts-to-duty
+    eventType: alertmanager.firing
+    fingerprint: "0f00d5c2e91a44b7"
+    triageVerdict: INVESTIGATE
+    runnerImageDigest: sha256:9c41f0a2
+    cliVersion: 2.1.223
+status:
+  phase: Completed
+  a2aTaskState: completed
+  startedAt: "2026-08-24T02:12:31Z"
+  completedAt: "2026-08-24T02:22:12Z"
+  model: claude-fable-5
+  usage:
+    billing: subscription
+    inputTokens: 184203
+    outputTokens: 12877
+    cacheReadTokens: 1200432
+    apiEquivalentUSD: 3.71
+    turns: 23
+  artifacts:
+    transcript: nfs://nas/dispatch/sessions/duty/2026-08-24/a7f3/transcript.jsonl
+    report: nfs://nas/dispatch/sessions/duty/2026-08-24/a7f3/report.md
+    branches: []
+  summary: >-
+    NodeDiskIOSaturation on nas-worker traced to the ZFS scrub overlapping the
+    02:00 backup window; not a regression. Recommended moving the scrub to
+    04:30 via nas-config; no code change made since write access to that repo
+    is not granted to this agent.
+  followUps:
+    - Reschedule ZFS scrub to 04:30 in nas-config (left as recommendation)
+    - Consider a silence for NodeDiskIOSaturation during declared backup windows

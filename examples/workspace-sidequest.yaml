@@ -1,0 +1,20 @@
+apiVersion: dispatch.janpuc.com/v1alpha1
+kind: Workspace
+metadata:
+  name: sidequest
+  namespace: dispatch
+spec:
+  origin:
+    gitUrl: ssh://git@nas.home:2222/jan/sidequest.git
+    defaultBranch: main
+  storage:
+    storageClassName: miroir-slow
+    size: 20Gi
+  caches:
+    - node
+    - uv
+    - go
+  lease:
+    singleActiveSession: true
+  retention:
+    scratch: 336h

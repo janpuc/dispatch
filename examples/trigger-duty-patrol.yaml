@@ -1,0 +1,26 @@
+apiVersion: dispatch.janpuc.com/v1alpha1
+kind: Trigger
+metadata:
+  name: duty-patrol
+  namespace: dispatch
+spec:
+  agentRef:
+    name: duty
+  source:
+    schedule:
+      cron: "15 5 * * *"
+      timezone: Europe/Warsaw
+  priority: low
+  budgetPolicy: deferIfExhausted
+  session:
+    prompt: |
+      Nightly patrol. Yesterday's session records are under
+      {{ .Paths.Sessions }} and your standing notes live in this workspace.
+
+      1. Review yesterday's sessions: outcomes, cost, anything that failed,
+         was suppressed, or looks like an emerging pattern.
+      2. Check budget and subscription-window burn; flag if any agent is
+         trending toward its caps.
+      3. Groom your notes: retire stale items, record new lessons.
+      4. Write the patrol log to {{ .Session.ReportPath }} with at most three
+         recommended follow-ups, each with the concrete next action.

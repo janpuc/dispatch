@@ -1,0 +1,39 @@
+apiVersion: dispatch.janpuc.com/v1alpha1
+kind: Agent
+metadata:
+  name: sidequest
+  namespace: dispatch
+spec:
+  description: >-
+    Project agent for the sidequest repo — a personal project touched rarely.
+    Picks up issues labeled for agents, implements against the issue spec, and
+    leaves a branch plus a session report for asynchronous review.
+  runner:
+    image: ghcr.io/janpuc/dispatch-runner:base
+    cli: claude
+    credentialsRef:
+      name: claude-max-primary
+  models:
+    session: claude-opus-5
+    triage: claude-haiku-4-5
+  workspaceRef:
+    name: sidequest
+  serviceAccountName: dispatch-agent-minimal
+  git:
+    author: "Sidequest Agent <sidequest@dispatch.local>"
+    pushBranches:
+      - dispatch/*
+  budgets:
+    maxConcurrentSessions: 1
+    perSession:
+      maxTurns: 80
+      timeout: 90m
+    daily:
+      maxSessions: 6
+      maxCostUSD: 10
+    subscriptionWindowReserve: 0.25
+  a2a:
+    expose: true
+    skills:
+      - id: implement-issue
+        description: Implement a scoped GitHub issue and open a branch for review
