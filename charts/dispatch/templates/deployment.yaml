@@ -1,0 +1,58 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dispatch-operator
+  labels:
+    {{- include "dispatch.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "dispatch.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "dispatch.labels" . | nindent 8 }}
+    spec:
+      serviceAccountName: dispatch-operator
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: operator
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+            - --gateway-bind-address=:{{ .Values.gateway.port }}
+            {{- with .Values.otlpEndpoint }}
+            - --otlp-endpoint={{ . }}
+            {{- end }}
+            {{- with .Values.sessionsPVC }}
+            - --sessions-pvc={{ . }}
+            {{- end }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          ports:
+            - name: metrics
+              containerPort: {{ .Values.metricsPort }}
+            - name: health
+              containerPort: {{ .Values.healthPort }}
+            - name: gateway
+              containerPort: {{ .Values.gateway.port }}
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: health
+            initialDelaySeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: health
+            initialDelaySeconds: 5
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}

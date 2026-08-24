@@ -1,0 +1,9 @@
+apiVersion: v2
+name: dispatch
+description: Event-driven runtime that keeps coding agents on call against your own cluster, on your existing model subscriptions, with every session on the record.
+type: application
+version: 0.1.0
+appVersion: main
+home: https://github.com/janpuc/dispatch
+sources:
+  - https://github.com/janpuc/dispatch
