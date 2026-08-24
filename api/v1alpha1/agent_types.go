@@ -17,9 +17,11 @@ type RunnerSpec struct {
 	// +kubebuilder:default=claude
 	CLI string `json:"cli,omitempty"`
 
-	// CredentialsRef names the Secret with provider credentials, mounted
-	// read-only into runner pods at /credentials. Subscription OAuth requires
-	// the CLI to run non-bare (ADR-0003).
+	// CredentialsRef names the Secret with provider credentials. Its keys are
+	// injected into runner pods as environment variables (e.g.
+	// CLAUDE_CODE_OAUTH_TOKEN for subscription auth) and the Secret is also
+	// mounted read-only at /credentials for file-shaped credentials
+	// (ADR-0003).
 	CredentialsRef NamedRef `json:"credentialsRef"`
 }
 

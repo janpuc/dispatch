@@ -43,7 +43,8 @@ this contract:
 ```
 in:  /task/task.json        rendered prompt, event payload, budgets, output spec
      workspace mount        NAS-backed project cache (git clone inside)
-     credentials Secret     provider OAuth/API creds mounted into $HOME
+     credentials Secret     keys injected as env (CLAUDE_CODE_OAUTH_TOKEN) and
+                            mounted at /credentials for file-shaped creds
 out: transcript.jsonl       streamed to NAS as the session runs
      result.json            outcome, usage, cost estimate, artifacts list, summary
      git branches           dispatch/<session-id> pushed to the project remote

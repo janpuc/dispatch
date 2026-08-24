@@ -115,6 +115,13 @@ func TestBuildSessionJob(t *testing.T) {
 	if pod.ServiceAccountName != "dispatch-agent-readonly" {
 		t.Errorf("serviceAccountName = %q", pod.ServiceAccountName)
 	}
+	if pod.SecurityContext == nil || pod.SecurityContext.FSGroup == nil || *pod.SecurityContext.FSGroup != 1000 {
+		t.Errorf("fsGroup = %+v", pod.SecurityContext)
+	}
+	envFrom := pod.Containers[0].EnvFrom
+	if len(envFrom) != 1 || envFrom[0].SecretRef == nil || envFrom[0].SecretRef.Name != "claude-max-primary" {
+		t.Errorf("envFrom = %+v", envFrom)
+	}
 	if len(pod.Containers) != 1 || pod.Containers[0].Image != "ghcr.io/janpuc/dispatch-runner:base" {
 		t.Fatalf("containers = %+v", pod.Containers)
 	}

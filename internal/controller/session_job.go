@@ -38,6 +38,7 @@ const (
 	finishedJobTTLSeconds  = int64(24 * 60 * 60)
 	timeoutGraceSeconds    = int64(600)
 	kubernetesNameMaxChars = 63
+	runnerUID              = int64(1000)
 )
 
 // SessionJobName is the Job name executing the given Session.
@@ -159,11 +160,23 @@ func BuildSessionJob(
 				Spec: corev1.PodSpec{
 					RestartPolicy:      corev1.RestartPolicyNever,
 					ServiceAccountName: agent.Spec.ServiceAccountName,
+					SecurityContext: &corev1.PodSecurityContext{
+						RunAsUser:  ptr.To(runnerUID),
+						RunAsGroup: ptr.To(runnerUID),
+						FSGroup:    ptr.To(runnerUID),
+					},
 					Containers: []corev1.Container{{
 						Name:       runnerContainerName,
 						Image:      agent.Spec.Runner.Image,
 						WorkingDir: workspaceMountPath,
 						Env:        env,
+						EnvFrom: []corev1.EnvFromSource{{
+							SecretRef: &corev1.SecretEnvSource{
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: agent.Spec.Runner.CredentialsRef.Name,
+								},
+							},
+						}},
 						VolumeMounts: []corev1.VolumeMount{
 							{Name: workspaceVolume, MountPath: workspaceMountPath},
 							{Name: taskVolume, MountPath: task.MountPath, ReadOnly: true},
