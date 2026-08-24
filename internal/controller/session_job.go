@@ -171,9 +171,10 @@ func BuildSessionJob(
 						FSGroup: ptr.To(runnerUID),
 					},
 					InitContainers: []corev1.Container{{
-						Name:    "volume-perms",
-						Image:   agent.Spec.Runner.Image,
-						Command: []string{"/bin/sh", "-c", volumePermsCommand},
+						Name:            "volume-perms",
+						Image:           agent.Spec.Runner.Image,
+						ImagePullPolicy: corev1.PullAlways,
+						Command:         []string{"/bin/sh", "-c", volumePermsCommand},
 						SecurityContext: &corev1.SecurityContext{
 							RunAsUser:    ptr.To(int64(0)),
 							RunAsGroup:   ptr.To(int64(0)),
@@ -182,10 +183,11 @@ func BuildSessionJob(
 						VolumeMounts: volumePermsMounts,
 					}},
 					Containers: []corev1.Container{{
-						Name:       runnerContainerName,
-						Image:      agent.Spec.Runner.Image,
-						WorkingDir: workspaceMountPath,
-						Env:        env,
+						Name:            runnerContainerName,
+						Image:           agent.Spec.Runner.Image,
+						ImagePullPolicy: corev1.PullAlways,
+						WorkingDir:      workspaceMountPath,
+						Env:             env,
 						EnvFrom: []corev1.EnvFromSource{{
 							SecretRef: &corev1.SecretEnvSource{
 								LocalObjectReference: corev1.LocalObjectReference{
