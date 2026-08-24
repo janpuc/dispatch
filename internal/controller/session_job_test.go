@@ -2,6 +2,7 @@ package controller
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 	"time"
 
@@ -118,6 +119,16 @@ func TestBuildSessionJob(t *testing.T) {
 	if pod.SecurityContext == nil || pod.SecurityContext.FSGroup == nil || *pod.SecurityContext.FSGroup != 1000 {
 		t.Errorf("fsGroup = %+v", pod.SecurityContext)
 	}
+	if len(pod.InitContainers) != 1 {
+		t.Fatalf("initContainers = %+v", pod.InitContainers)
+	}
+	perms := pod.InitContainers[0]
+	if perms.SecurityContext == nil || perms.SecurityContext.RunAsUser == nil || *perms.SecurityContext.RunAsUser != 0 {
+		t.Errorf("volume-perms securityContext = %+v", perms.SecurityContext)
+	}
+	if !strings.Contains(perms.Command[2], "chown 1000:1000 /workspace") {
+		t.Errorf("volume-perms command = %v", perms.Command)
+	}
 	envFrom := pod.Containers[0].EnvFrom
 	if len(envFrom) != 1 || envFrom[0].SecretRef == nil || envFrom[0].SecretRef.Name != "claude-max-primary" {
 		t.Errorf("envFrom = %+v", envFrom)
@@ -169,6 +180,10 @@ func TestBuildSessionJobWithSessionsPVC(t *testing.T) {
 	}
 	if env["DISPATCH_SESSIONS"] != "/sessions" {
 		t.Errorf("DISPATCH_SESSIONS = %q", env["DISPATCH_SESSIONS"])
+	}
+	perms := pod.InitContainers[0]
+	if !strings.Contains(perms.Command[2], "/sessions") || len(perms.VolumeMounts) != 2 {
+		t.Errorf("volume-perms with sessions = %v %+v", perms.Command, perms.VolumeMounts)
 	}
 }
 

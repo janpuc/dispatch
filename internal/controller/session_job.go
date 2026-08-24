@@ -146,6 +146,13 @@ func BuildSessionJob(
 		)
 	}
 
+	volumePermsCommand := fmt.Sprintf("chown %d:%d %s", runnerUID, runnerUID, workspaceMountPath)
+	volumePermsMounts := []corev1.VolumeMount{{Name: workspaceVolume, MountPath: workspaceMountPath}}
+	if cfg.SessionsPVC != "" {
+		volumePermsCommand += " " + sessionsMountPath
+		volumePermsMounts = append(volumePermsMounts, corev1.VolumeMount{Name: sessionsVolume, MountPath: sessionsMountPath})
+	}
+
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      SessionJobName(session),
@@ -161,10 +168,19 @@ func BuildSessionJob(
 					RestartPolicy:      corev1.RestartPolicyNever,
 					ServiceAccountName: agent.Spec.ServiceAccountName,
 					SecurityContext: &corev1.PodSecurityContext{
-						RunAsUser:  ptr.To(runnerUID),
-						RunAsGroup: ptr.To(runnerUID),
-						FSGroup:    ptr.To(runnerUID),
+						FSGroup: ptr.To(runnerUID),
 					},
+					InitContainers: []corev1.Container{{
+						Name:    "volume-perms",
+						Image:   agent.Spec.Runner.Image,
+						Command: []string{"/bin/sh", "-c", volumePermsCommand},
+						SecurityContext: &corev1.SecurityContext{
+							RunAsUser:    ptr.To(int64(0)),
+							RunAsGroup:   ptr.To(int64(0)),
+							RunAsNonRoot: ptr.To(false),
+						},
+						VolumeMounts: volumePermsMounts,
+					}},
 					Containers: []corev1.Container{{
 						Name:       runnerContainerName,
 						Image:      agent.Spec.Runner.Image,
