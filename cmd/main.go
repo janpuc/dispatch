@@ -5,6 +5,7 @@ package main
 import (
 	"flag"
 	"os"
+	"time"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -16,6 +17,7 @@ import (
 
 	dispatchv1alpha1 "github.com/janpuc/dispatch/api/v1alpha1"
 	"github.com/janpuc/dispatch/internal/controller"
+	"github.com/janpuc/dispatch/internal/gateway"
 )
 
 var (
@@ -41,6 +43,8 @@ func main() {
 		"OTLP collector endpoint injected into runner pods; empty disables runner telemetry.")
 	flag.StringVar(&sessionsPVC, "sessions-pvc", os.Getenv("DISPATCH_SESSIONS_PVC"),
 		"Shared PVC for session records mounted into runner pods; empty keeps records in each workspace.")
+	var gatewayAddr string
+	flag.StringVar(&gatewayAddr, "gateway-bind-address", ":9080", "The address the event gateway binds to.")
 	opts := zap.Options{Development: false}
 	opts.BindFlags(flag.CommandLine)
 	flag.Parse()
@@ -71,6 +75,26 @@ func main() {
 	workspaceReconciler := &controller.WorkspaceReconciler{Client: mgr.GetClient()}
 	if err := workspaceReconciler.SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "workspace")
+		os.Exit(1)
+	}
+
+	gate, err := gateway.NewCELGate()
+	if err != nil {
+		setupLog.Error(err, "unable to build CEL environment")
+		os.Exit(1)
+	}
+	dispatcher := &gateway.Dispatcher{Client: mgr.GetClient(), Gate: gate, Clock: time.Now}
+	if err := mgr.Add(&gateway.Server{
+		Client:     mgr.GetClient(),
+		APIReader:  mgr.GetAPIReader(),
+		Dispatcher: dispatcher,
+		Addr:       gatewayAddr,
+	}); err != nil {
+		setupLog.Error(err, "unable to add gateway server")
+		os.Exit(1)
+	}
+	if err := mgr.Add(&gateway.CronScheduler{Client: mgr.GetClient(), Dispatcher: dispatcher}); err != nil {
+		setupLog.Error(err, "unable to add cron scheduler")
 		os.Exit(1)
 	}
 

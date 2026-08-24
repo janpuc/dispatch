@@ -62,6 +62,9 @@ func (r *SessionReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	if session.Status.Phase.IsTerminal() {
 		return ctrl.Result{}, nil
 	}
+	if reason := session.Annotations[dispatchv1alpha1.AnnotationSuppressedReason]; reason != "" {
+		return ctrl.Result{}, r.finalizeSuppressed(ctx, &session, reason)
+	}
 
 	var agent dispatchv1alpha1.Agent
 	if err := r.Get(ctx, types.NamespacedName{Namespace: session.Namespace, Name: session.Spec.AgentRef.Name}, &agent); err != nil {
@@ -323,6 +326,26 @@ func jobFailed(job *batchv1.Job) bool {
 		}
 	}
 	return false
+}
+
+func (r *SessionReconciler) finalizeSuppressed(ctx context.Context, session *dispatchv1alpha1.Session, reason string) error {
+	now := metav1.Now()
+	session.Status.Phase = dispatchv1alpha1.SessionSuppressed
+	session.Status.A2ATaskState = session.Status.Phase.A2ATaskState()
+	session.Status.Summary = reason
+	session.Status.CompletedAt = &now
+	meta.SetStatusCondition(&session.Status.Conditions, metav1.Condition{
+		Type:               conditionDispatched,
+		Status:             metav1.ConditionFalse,
+		Reason:             string(dispatchv1alpha1.SessionSuppressed),
+		Message:            reason,
+		ObservedGeneration: session.Generation,
+	})
+	if err := r.Status().Update(ctx, session); err != nil {
+		return err
+	}
+	metrics.SessionsTotal.WithLabelValues(session.Spec.AgentRef.Name, string(dispatchv1alpha1.SessionSuppressed)).Inc()
+	return nil
 }
 
 func (r *SessionReconciler) hold(ctx context.Context, session *dispatchv1alpha1.Session, reason, message string) (ctrl.Result, error) {

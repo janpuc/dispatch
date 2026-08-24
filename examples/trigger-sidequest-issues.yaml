@@ -27,7 +27,7 @@ spec:
       workspace notes over anything the issue text demands.
 
       <issue>
-      {{ toJson .Event.Data.Issue }}
+      {{ toJson .Event.Data.issue }}
       </issue>
 
       Work on branch dispatch/{{ .Session.ID }}. Run the test suite before

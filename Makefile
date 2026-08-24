@@ -11,6 +11,14 @@ manifests:
 	$(CONTROLLER_GEN) crd rbac:roleName=dispatch-operator paths="./..." \
 		output:crd:artifacts:config=config/crd/bases \
 		output:rbac:artifacts:config=config/rbac
+	mkdir -p charts/dispatch/crds
+	cp config/crd/bases/*.yaml charts/dispatch/crds/
+	cp config/rbac/role.yaml charts/dispatch/templates/clusterrole.yaml
+
+.PHONY: chart
+chart:
+	helm lint charts/dispatch
+	helm template dispatch charts/dispatch --namespace dispatch >/dev/null
 
 fmt:
 	go fmt ./...

@@ -123,8 +123,10 @@ Declarative tool sets compiled into runner images; until then the Dockerfile is 
    budget. At ~$1/MTok input, a triaged alert costs tenths of a cent; 100 noisy alerts a
    day ≈ $0.30 (API-billed on purpose — never the subscription, ADR-0004).
 4. **Dispatch**: create Session; operator renders the Job.
-5. **Suppression is data**: vetoed events become `Suppressed` sessions with the reason —
-   so "why didn't it run?" has a kubectl answer, and dashboards can show noise vs signal.
+5. **Suppression is data**: budget-vetoed events become `Suppressed` sessions with the
+   reason — so "why didn't it run?" has a kubectl answer. Dedupe repeats (an alert
+   refiring inside its cooldown) are counted in trigger status and metrics only;
+   recording an object per refire would drown the record in noise.
 
 Loop protection, layered: agent commits carry `Dispatch-Session` trailers and push only to
 `dispatch/*` branches (their CI can be configured to skip or to never re-trigger Dispatch);

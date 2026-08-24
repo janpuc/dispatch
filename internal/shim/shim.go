@@ -109,6 +109,7 @@ func prepare(cfg Config) (task.File, string, error) {
 
 func execute(ctx context.Context, cfg Config, doc task.File, sessionDir string, result *Result) error {
 	result.Artifacts.Transcript = filepath.Join(sessionDir, transcriptFileName)
+	doc.Prompt = strings.ReplaceAll(doc.Prompt, task.ReportPathToken, filepath.Join(sessionDir, reportFileName))
 
 	workdir, repo, err := ensureWorkdir(ctx, cfg, doc)
 	if err != nil {

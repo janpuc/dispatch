@@ -22,3 +22,5 @@ jobs:
       - run: make vet
       - run: make test
       - run: make build
+      - uses: azure/setup-helm@v4
+      - run: make chart

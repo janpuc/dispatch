@@ -17,6 +17,16 @@ var SessionsTotal = prometheus.NewCounterVec(
 	[]string{"agent", "outcome"},
 )
 
+// EventsTotal counts gateway event dispositions, by source and outcome of
+// the deterministic pipeline (design §5).
+var EventsTotal = prometheus.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: "dispatch_events_total",
+		Help: "Gateway events by source and disposition (filtered, deduped, suppressed, dispatched, error).",
+	},
+	[]string{"source", "disposition"},
+)
+
 func init() {
-	ctrlmetrics.Registry.MustRegister(SessionsTotal)
+	ctrlmetrics.Registry.MustRegister(SessionsTotal, EventsTotal)
 }

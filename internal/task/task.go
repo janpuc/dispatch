@@ -11,6 +11,11 @@ const MountPath = "/task"
 // FileName is the task document's file name inside MountPath.
 const FileName = "task.json"
 
+// ReportPathToken is the placeholder the gateway renders for
+// {{ .Session.ReportPath }}; the runner shim substitutes the session's real
+// report path before invoking the CLI, since only the shim knows it.
+const ReportPathToken = "__DISPATCH_REPORT_PATH__"
+
 // File is the task.json document.
 type File struct {
 	// Session is the Session object name.

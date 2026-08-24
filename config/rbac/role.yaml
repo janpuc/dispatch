@@ -30,6 +30,12 @@ rules:
   - list
   - watch
 - apiGroups:
+  - ""
+  resources:
+  - secrets
+  verbs:
+  - get
+- apiGroups:
   - batch
   resources:
   - jobs
@@ -54,6 +60,7 @@ rules:
   resources:
   - sessions
   verbs:
+  - create
   - get
   - list
   - patch
@@ -63,6 +70,7 @@ rules:
   - dispatch.janpuc.com
   resources:
   - sessions/status
+  - triggers/status
   - workspaces/status
   verbs:
   - get
