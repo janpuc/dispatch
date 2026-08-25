@@ -15,7 +15,7 @@ func TestProcessStream(t *testing.T) {
 
 	var out bytes.Buffer
 	scrubber := NewScrubber()
-	result, err := ProcessStream(strings.NewReader(input), &out, scrubber.Scrub, nil)
+	result, err := ProcessStream(strings.NewReader(input), &out, StreamHandlers{Scrub: scrubber.Scrub})
 	if err != nil {
 		t.Fatalf("ProcessStream: %v", err)
 	}
@@ -38,7 +38,7 @@ func TestProcessStream(t *testing.T) {
 
 func TestProcessStreamWithoutResult(t *testing.T) {
 	var out bytes.Buffer
-	result, err := ProcessStream(strings.NewReader(`{"type":"assistant"}`), &out, func(s string) string { return s }, nil)
+	result, err := ProcessStream(strings.NewReader(`{"type":"assistant"}`), &out, StreamHandlers{})
 	if err != nil {
 		t.Fatalf("ProcessStream: %v", err)
 	}
@@ -55,7 +55,7 @@ func TestProcessStreamSignalsQuotaExhaustion(t *testing.T) {
 
 	var out bytes.Buffer
 	signalled := 0
-	if _, err := ProcessStream(strings.NewReader(input), &out, func(s string) string { return s }, func() { signalled++ }); err != nil {
+	if _, err := ProcessStream(strings.NewReader(input), &out, StreamHandlers{OnQuotaExhausted: func() { signalled++ }}); err != nil {
 		t.Fatalf("ProcessStream: %v", err)
 	}
 	if signalled != 1 {

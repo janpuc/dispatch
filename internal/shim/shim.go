@@ -34,6 +34,7 @@ type Config struct {
 	CredentialsDir string
 	Home           string
 	TerminationLog string
+	Records        io.Writer
 	Now            func() time.Time
 }
 
@@ -46,6 +47,7 @@ func ConfigFromEnv() Config {
 		CredentialsDir: envOr("DISPATCH_CREDENTIALS", "/credentials"),
 		Home:           envOr("HOME", "/workspace/.dispatch-home"),
 		TerminationLog: TerminationLogPath,
+		Records:        os.Stdout,
 		Now:            time.Now,
 	}
 }
@@ -80,12 +82,52 @@ func Run(ctx context.Context, cfg Config) (Result, error) {
 		return result, err
 	}
 
-	err = execute(ctx, cfg, doc, sessionDir, &result)
+	recorder := NewRecorder(cfg.Records, doc.Session, doc.Agent, doc.Model, cfg.Now)
+	recorder.Emit(EventStart, map[string]any{
+		"trigger":     doc.Trigger,
+		"fingerprint": doc.Fingerprint,
+		"workspace":   doc.GitURL,
+	})
+
+	err = execute(ctx, cfg, doc, sessionDir, &result, recorder)
 	if err != nil && result.Summary == "" {
 		result.Summary = err.Error()
 	}
+	emitReport(recorder, sessionDir)
+	recorder.Emit(EventEnd, map[string]any{
+		"outcome":         result.Outcome,
+		"summary":         truncate(result.Summary, recordTextLimit),
+		"turns":           result.Usage.Turns,
+		"inputTokens":     result.Usage.InputTokens,
+		"outputTokens":    result.Usage.OutputTokens,
+		"cacheReadTokens": result.Usage.CacheReadTokens,
+		"costUSD":         result.Usage.APIEquivalentUSD,
+		"branches":        result.Artifacts.Branches,
+		"error":           errorText(err),
+	})
 	writeResult(cfg, sessionDir, result)
 	return result, err
+}
+
+func errorText(err error) string {
+	if err == nil {
+		return ""
+	}
+	return err.Error()
+}
+
+// emitReport mirrors the session's report into the record stream so the
+// deliverable is readable without reaching the workspace volume.
+func emitReport(recorder *Recorder, sessionDir string) {
+	path := filepath.Join(sessionDir, reportFileName)
+	if !fileExists(path) {
+		return
+	}
+	body, err := os.ReadFile(path)
+	if err != nil {
+		return
+	}
+	recorder.Emit(EventReport, map[string]any{"text": truncate(string(body), 20000)})
 }
 
 func prepare(ctx context.Context, cfg Config) (task.File, string, error) {
@@ -114,7 +156,7 @@ func prepare(ctx context.Context, cfg Config) (task.File, string, error) {
 	return doc, sessionDir, nil
 }
 
-func execute(ctx context.Context, cfg Config, doc task.File, sessionDir string, result *Result) error {
+func execute(ctx context.Context, cfg Config, doc task.File, sessionDir string, result *Result, recorder *Recorder) error {
 	result.Artifacts.Transcript = filepath.Join(sessionDir, transcriptFileName)
 	doc.Prompt = strings.ReplaceAll(doc.Prompt, task.ReportPathToken, filepath.Join(sessionDir, reportFileName))
 
@@ -130,7 +172,7 @@ func execute(ctx context.Context, cfg Config, doc task.File, sessionDir string, 
 		defer cancel()
 	}
 
-	stream, quotaExhausted, waitErr, err := runCLI(runCtx, cfg, doc, workdir, sessionDir)
+	stream, quotaExhausted, waitErr, err := runCLI(runCtx, cfg, doc, workdir, sessionDir, recorder)
 	if err != nil {
 		return err
 	}
@@ -181,7 +223,7 @@ func ensureWorkdir(ctx context.Context, cfg Config, doc task.File) (string, *Rep
 	return repo.Dir, repo, nil
 }
 
-func runCLI(ctx context.Context, cfg Config, doc task.File, workdir, sessionDir string) (*StreamResult, bool, error, error) {
+func runCLI(ctx context.Context, cfg Config, doc task.File, workdir, sessionDir string, recorder *Recorder) (*StreamResult, bool, error, error) {
 	transcript, err := os.Create(filepath.Join(sessionDir, transcriptFileName))
 	if err != nil {
 		return nil, false, nil, err
@@ -218,9 +260,13 @@ func runCLI(ctx context.Context, cfg Config, doc task.File, workdir, sessionDir 
 	}
 
 	scrubber := NewScrubber()
-	stream, streamErr := ProcessStream(stdout, transcript, scrubber.Scrub, func() {
-		quotaExhausted = true
-		stopCLI()
+	stream, streamErr := ProcessStream(stdout, transcript, StreamHandlers{
+		Scrub: scrubber.Scrub,
+		OnQuotaExhausted: func() {
+			quotaExhausted = true
+			stopCLI()
+		},
+		OnLine: recorder.EmitStreamLine,
 	})
 	waitErr := cmd.Wait()
 	if quotaExhausted {

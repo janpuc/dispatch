@@ -163,14 +163,23 @@ and agent memory (in-workspace notes/CLAUDE.md, versioned with the project).
 
 Requirement: "literally all sessions should be review-able." Three layers:
 
-1. **Record** — `sessions/<agent>/<date>/<id>/` on the NAS: `transcript.jsonl` (the
-   stream-json feed, secret-scrubbed), `result.json`, `report.md`, artifacts. Reviewable
-   raw, via `dispatch show <id>` (rendered), or grep-able in bulk; transcripts also ship
-   to Loki so Grafana can search the fleet's entire life.
-2. **Metrics** — two sources:
-   - Claude Code native OTel (`CLAUDE_CODE_ENABLE_TELEMETRY=1`, OTLP exporters): token
-     usage, per-session cost estimates, tool decisions, lines changed, commits/PRs.
-   - Operator/gateway Prometheus metrics: `dispatch_events_total{source,disposition}`,
+1. **Record** — two places, because a workspace volume is not a review surface:
+   - On disk, `sessions/<agent>/<date>/<id>/`: `transcript.jsonl` (the full stream-json
+     feed, secret-scrubbed), `result.json`, `report.md`, artifacts.
+   - On **stdout**, as one JSON line per milestone (`start`, `assistant`, `tool`,
+     `report`, `end`), carrying `stream: dispatch-session` plus session/agent/model.
+     Any cluster log collector picks these up, which is what makes a session reviewable
+     after its pod is gone — including the report body, so the deliverable is readable
+     without mounting anything. Assistant text is capped at 2000 chars and tool inputs
+     at 500 so a chatty session cannot flood the pipeline; the untruncated record stays
+     in the transcript file.
+2. **Metrics** — the operator publishes usage itself, from the result the runner
+   harvests, so token and cost history works on subscription billing and needs no OTel
+   collector: `dispatch_tokens_total{agent,model,direction}`,
+   `dispatch_cost_usd_total{agent,model,billing}`, `dispatch_session_seconds{agent,outcome}`.
+   Claude Code's native OTel export (`CLAUDE_CODE_ENABLE_TELEMETRY=1`) remains available
+   for richer per-tool detail wherever an OTLP endpoint exists. Plus the pipeline
+   counters: `dispatch_events_total{source,disposition}`,
      `dispatch_sessions_total{agent,trigger,outcome}`, `dispatch_session_seconds`,
      `dispatch_tokens_total{agent,model,type}`, `dispatch_cost_usd_total{billing}`,
      `dispatch_window_used_ratio{credential}`, `dispatch_triage_total{verdict}`,

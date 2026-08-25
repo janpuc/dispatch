@@ -265,6 +265,7 @@ func (r *SessionReconciler) recordProgress(
 
 	if phase != previous && phase.IsTerminal() {
 		metrics.SessionsTotal.WithLabelValues(agent.Name, string(phase)).Inc()
+		observeSessionMetrics(session, agent)
 		r.Recorder.Eventf(session, corev1.EventTypeNormal, string(phase), "session reached %s", phase)
 		return r.releaseLease(ctx, workspace, session.Name)
 	}
@@ -316,6 +317,42 @@ func applyResult(session *dispatchv1alpha1.Session, result shim.Result) {
 		Transcript: result.Artifacts.Transcript,
 		Report:     result.Artifacts.Report,
 		Branches:   result.Artifacts.Branches,
+	}
+}
+
+// observeSessionMetrics publishes the usage the runner reported, so token and
+// cost history survives the Session object and lands in Grafana (design §8).
+func observeSessionMetrics(session *dispatchv1alpha1.Session, agent *dispatchv1alpha1.Agent) {
+	model := session.Status.Model
+	if model == "" {
+		model = agent.Spec.Models.Session
+	}
+	if started, completed := session.Status.StartedAt, session.Status.CompletedAt; started != nil && completed != nil {
+		metrics.SessionSeconds.
+			WithLabelValues(agent.Name, string(session.Status.Phase)).
+			Observe(completed.Sub(started.Time).Seconds())
+	}
+	usage := session.Status.Usage
+	if usage == nil {
+		return
+	}
+	for direction, count := range map[string]int64{
+		"input":      usage.InputTokens,
+		"output":     usage.OutputTokens,
+		"cache_read": usage.CacheReadTokens,
+	} {
+		if count > 0 {
+			metrics.TokensTotal.WithLabelValues(agent.Name, model, direction).Add(float64(count))
+		}
+	}
+	if usage.APIEquivalentUSD != nil {
+		billing := usage.Billing
+		if billing == "" {
+			billing = "unknown"
+		}
+		if cost := usage.APIEquivalentUSD.AsApproximateFloat64(); cost > 0 {
+			metrics.CostUSDTotal.WithLabelValues(agent.Name, model, billing).Add(cost)
+		}
 	}
 }
 
