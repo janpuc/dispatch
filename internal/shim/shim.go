@@ -83,7 +83,7 @@ func Run(ctx context.Context, cfg Config) (Result, error) {
 	}
 
 	recorder := NewRecorder(cfg.Records, doc.Session, doc.Agent, doc.Model, cfg.Now)
-	recorder.Emit(EventStart, map[string]any{
+	recorder.Emit(EventStart, "session started on "+doc.Model, map[string]any{
 		"trigger":     doc.Trigger,
 		"fingerprint": doc.Fingerprint,
 		"workspace":   doc.GitURL,
@@ -94,7 +94,7 @@ func Run(ctx context.Context, cfg Config) (Result, error) {
 		result.Summary = err.Error()
 	}
 	emitReport(recorder, sessionDir)
-	recorder.Emit(EventEnd, map[string]any{
+	recorder.Emit(EventEnd, "session "+result.Outcome+": "+truncate(result.Summary, 300), map[string]any{
 		"outcome":         result.Outcome,
 		"summary":         truncate(result.Summary, recordTextLimit),
 		"turns":           result.Usage.Turns,
@@ -125,7 +125,8 @@ func emitReport(recorder *Recorder, sessionDir string) {
 	if err != nil {
 		return
 	}
-	recorder.Emit(EventReport, map[string]any{"text": truncate(string(body), 20000)})
+	report := truncate(string(body), 20000)
+	recorder.Emit(EventReport, "report: "+truncate(report, 300), map[string]any{"text": report})
 }
 
 func prepare(ctx context.Context, cfg Config) (task.File, string, error) {

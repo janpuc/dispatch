@@ -43,12 +43,18 @@ func NewRecorder(out io.Writer, session, agent, model string, now func() time.Ti
 	return &Recorder{out: out, session: session, agent: agent, model: model, now: now}
 }
 
-// Emit writes one record, merging the session identity into every line.
-func (r *Recorder) Emit(event string, fields map[string]any) {
+// Emit writes one record, merging the session identity into every line. The
+// message is what a log UI shows in its message column, so it carries the
+// human-readable gist; fields carry the structured detail.
+func (r *Recorder) Emit(event, message string, fields map[string]any) {
 	if r == nil || r.out == nil {
 		return
 	}
+	if message == "" {
+		message = event
+	}
 	line := map[string]any{
+		"_msg":    truncate(message, recordTextLimit),
 		"time":    r.now().UTC().Format(time.RFC3339),
 		"stream":  recordStreamName,
 		"event":   event,
@@ -91,12 +97,13 @@ func (r *Recorder) EmitStreamLine(line string) {
 		switch block.Type {
 		case "text":
 			if text := truncate(block.Text, recordTextLimit); text != "" {
-				r.Emit(EventAssistant, map[string]any{"text": text})
+				r.Emit(EventAssistant, text, map[string]any{"text": text})
 			}
 		case "tool_use":
-			r.Emit(EventTool, map[string]any{
+			input := truncate(string(block.Input), recordInputLimit)
+			r.Emit(EventTool, block.Name+" "+input, map[string]any{
 				"tool":  block.Name,
-				"input": truncate(string(block.Input), recordInputLimit),
+				"input": input,
 			})
 		}
 	}
