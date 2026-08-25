@@ -3,6 +3,11 @@
 Each phase ends with a demo that must work end-to-end before moving on. The demos are the
 spec: if a phase's demo is unconvincing, the phase is not done.
 
+**Status 2026-08-25:** Phase 0 and most of Phase 1 are done and running in the `ai`
+namespace; Phase 2 has not started, while two Phase 3 items (a second runner flavour,
+agent→agent handoff) arrived early because the guardian needed them. `docs/coverage.md`
+is the authoritative per-feature delta — read it before trusting any tick below.
+
 ## Phase 0 — Prove the loop (no operator, ~a weekend)
 
 Static manifests only, one namespace, zero CRDs.

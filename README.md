@@ -5,9 +5,10 @@ Events wake the right agent, sessions run in isolated NAS-backed workspaces on t
 subscriptions you already pay for, and every run is metered, recorded, and reviewable —
 from t3, including your phone. Your laptop stays off.
 
-> Status: **implementation underway**. The typed API, operator core (Session→Job,
-> Workspace→PVC), and the dispatch-run runner shim exist; the event gateway is next.
-> Start at [`docs/design.md`](docs/design.md).
+> Status: **running**. Operator, event gateway, runner shim, Helm chart, and a live
+> guardian fleet on a homelab cluster. Start at [`docs/design.md`](docs/design.md) for
+> the intended system and [`docs/coverage.md`](docs/coverage.md) for what actually
+> works today.
 
 ## Why
 
@@ -69,6 +70,7 @@ config/             generated CRDs and RBAC
 build/runner/       runner image: agent CLI + dispatch-run
 .github/workflows/  ci (generate+test+drift) and images (ghcr publish)
 docs/design.md      the full design
+docs/coverage.md    honest delta: what is done, partial, or declared-but-inert
 docs/roadmap.md     phased plan with demo criteria
 docs/adr/           decision records (A2A vs ACP, CLI-wrapping, storage, tooling, …)
 examples/           the API in use — concrete CRs, schema-checked by tests
