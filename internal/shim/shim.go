@@ -130,7 +130,7 @@ func execute(ctx context.Context, cfg Config, doc task.File, sessionDir string, 
 		defer cancel()
 	}
 
-	stream, waitErr, err := runCLI(runCtx, cfg, doc, workdir, sessionDir)
+	stream, quotaExhausted, waitErr, err := runCLI(runCtx, cfg, doc, workdir, sessionDir)
 	if err != nil {
 		return err
 	}
@@ -153,6 +153,8 @@ func execute(ctx context.Context, cfg Config, doc task.File, sessionDir string, 
 	publishBranch(ctx, doc, repo, result)
 
 	switch {
+	case quotaExhausted:
+		return fmt.Errorf("provider quota exhausted for model %s", doc.Model)
 	case runCtx.Err() != nil:
 		return fmt.Errorf("session timed out after %ds", doc.TimeoutSeconds)
 	case waitErr != nil:
@@ -179,20 +181,24 @@ func ensureWorkdir(ctx context.Context, cfg Config, doc task.File) (string, *Rep
 	return repo.Dir, repo, nil
 }
 
-func runCLI(ctx context.Context, cfg Config, doc task.File, workdir, sessionDir string) (*StreamResult, error, error) {
+func runCLI(ctx context.Context, cfg Config, doc task.File, workdir, sessionDir string) (*StreamResult, bool, error, error) {
 	transcript, err := os.Create(filepath.Join(sessionDir, transcriptFileName))
 	if err != nil {
-		return nil, nil, err
+		return nil, false, nil, err
 	}
 	defer transcript.Close()
 	stderrLog, err := os.Create(filepath.Join(sessionDir, stderrFileName))
 	if err != nil {
-		return nil, nil, err
+		return nil, false, nil, err
 	}
 	defer stderrLog.Close()
 
+	cliCtx, stopCLI := context.WithCancel(ctx)
+	defer stopCLI()
+	quotaExhausted := false
+
 	invocation := BuildInvocation(doc)
-	cmd := exec.CommandContext(ctx, invocation.Bin, invocation.Args...)
+	cmd := exec.CommandContext(cliCtx, invocation.Bin, invocation.Args...)
 	cmd.Dir = workdir
 	cmd.Stdin = strings.NewReader(invocation.Prompt)
 	cmd.Stderr = stderrLog
@@ -205,19 +211,24 @@ func runCLI(ctx context.Context, cfg Config, doc task.File, workdir, sessionDir 
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		return nil, nil, err
+		return nil, false, nil, err
 	}
 	if err := cmd.Start(); err != nil {
-		return nil, nil, fmt.Errorf("starting %s: %w", invocation.Bin, err)
+		return nil, false, nil, fmt.Errorf("starting %s: %w", invocation.Bin, err)
 	}
 
 	scrubber := NewScrubber()
-	stream, streamErr := ProcessStream(stdout, transcript, scrubber.Scrub)
+	stream, streamErr := ProcessStream(stdout, transcript, scrubber.Scrub, func() {
+		quotaExhausted = true
+		stopCLI()
+	})
 	waitErr := cmd.Wait()
-	if waitErr == nil && streamErr != nil {
+	if quotaExhausted {
+		waitErr = nil
+	} else if waitErr == nil && streamErr != nil {
 		waitErr = streamErr
 	}
-	return stream, waitErr, nil
+	return stream, quotaExhausted, waitErr, nil
 }
 
 func publishBranch(ctx context.Context, doc task.File, repo *Repo, result *Result) {

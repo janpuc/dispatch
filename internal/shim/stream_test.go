@@ -15,7 +15,7 @@ func TestProcessStream(t *testing.T) {
 
 	var out bytes.Buffer
 	scrubber := NewScrubber()
-	result, err := ProcessStream(strings.NewReader(input), &out, scrubber.Scrub)
+	result, err := ProcessStream(strings.NewReader(input), &out, scrubber.Scrub, nil)
 	if err != nil {
 		t.Fatalf("ProcessStream: %v", err)
 	}
@@ -38,11 +38,30 @@ func TestProcessStream(t *testing.T) {
 
 func TestProcessStreamWithoutResult(t *testing.T) {
 	var out bytes.Buffer
-	result, err := ProcessStream(strings.NewReader(`{"type":"assistant"}`), &out, func(s string) string { return s })
+	result, err := ProcessStream(strings.NewReader(`{"type":"assistant"}`), &out, func(s string) string { return s }, nil)
 	if err != nil {
 		t.Fatalf("ProcessStream: %v", err)
 	}
 	if result != nil {
 		t.Errorf("result = %+v, want nil", result)
+	}
+}
+
+func TestProcessStreamSignalsQuotaExhaustion(t *testing.T) {
+	input := strings.Join([]string{
+		`{"type":"system","subtype":"init"}`,
+		`{"type":"assistant","message":{"content":[{"type":"text","text":"You're out of usage credits. Switch to another model to continue."}]}}`,
+	}, "\n")
+
+	var out bytes.Buffer
+	signalled := 0
+	if _, err := ProcessStream(strings.NewReader(input), &out, func(s string) string { return s }, func() { signalled++ }); err != nil {
+		t.Fatalf("ProcessStream: %v", err)
+	}
+	if signalled != 1 {
+		t.Errorf("quota callback fired %d times, want exactly 1", signalled)
+	}
+	if QuotaExhausted(`{"type":"assistant","text":"all good"}`) {
+		t.Error("ordinary line misdetected as quota exhaustion")
 	}
 }

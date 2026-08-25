@@ -29,16 +29,23 @@ type StreamResult struct {
 }
 
 // ProcessStream copies stream-json lines from r to w, scrubbing each line,
-// and returns the last result-typed line when one was seen.
-func ProcessStream(r io.Reader, w io.Writer, scrub func(string) string) (*StreamResult, error) {
+// and returns the last result-typed line when one was seen. onQuotaExhausted
+// fires the first time a line signals a spent provider quota, letting the
+// caller stop a CLI that would otherwise retry until the session times out.
+func ProcessStream(r io.Reader, w io.Writer, scrub func(string) string, onQuotaExhausted func()) (*StreamResult, error) {
 	scanner := bufio.NewScanner(r)
 	scanner.Buffer(make([]byte, 0, 64*1024), maxTranscriptLineBytes)
 
 	var last *StreamResult
+	quotaSignalled := false
 	for scanner.Scan() {
 		line := scrub(scanner.Text())
 		if _, err := fmt.Fprintln(w, line); err != nil {
 			return last, err
+		}
+		if !quotaSignalled && onQuotaExhausted != nil && QuotaExhausted(line) {
+			quotaSignalled = true
+			onQuotaExhausted()
 		}
 		var probe struct {
 			Type string `json:"type"`
