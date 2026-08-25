@@ -6,8 +6,6 @@ import (
 	"time"
 )
 
-// Record field limits keep a chatty session from flooding the log pipeline
-// while still leaving each line readable on its own.
 const (
 	recordTextLimit  = 2000
 	recordInputLimit = 500

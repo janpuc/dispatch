@@ -1,0 +1,39 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/koment-dev/koment/main/schema/v1alpha/annotation.schema.json
+apiVersion: koment.dev/v1alpha
+kind: Annotation
+metadata:
+  id: 01M0VXYKESQQ5C6DNCP441MG87
+  created: "2026-08-25T07:42:56Z"
+spec:
+  target:
+    file: internal/controller/session_controller.go
+  type: why
+  body: |-
+    Token and cost history is published here, from the result the runner
+    harvested, rather than from provider telemetry. Claude Code can export its
+    own OTel metrics, but that needs an OTLP collector this cluster does not
+    run, and it reports nothing useful when the session is subscription-billed.
+    Reading the numbers off the CLI's final result line means the fleet answers
+    "what would this have cost on API pricing" (ADR-0004) on any billing mode,
+    with Prometheus as the only dependency. These counters live in operator
+    memory, so they reset when the operator restarts — Session objects remain
+    the durable record.
+  anchor:
+    scope: excerpt
+    excerpt: func observeSessionMetrics(session *dispatchv1alpha1.Session, agent *dispatchv1alpha1.Agent) {
+    before: "\t}\n}\n"
+    after: "\tmodel := session.Status.Model\n\tif model == \"\" {\n\t\tmodel = agent.Spec.Models.Session"
+  author:
+    name: janpuc
+    email: janpuc@proton.me
+    kind: human
+    source: git-config
+  git:
+    commit: d41cf6787eaa35aa07e1ca30cb0bf1f3ddebd84a
+    path: internal/controller/session_controller.go
+    line: 323
+status:
+  lastSeenLine: 323
+  resolution: ok
+  resolvedAt: "2026-08-25T07:42:56Z"
+  resolvedCommit: d41cf6787eaa35aa07e1ca30cb0bf1f3ddebd84a

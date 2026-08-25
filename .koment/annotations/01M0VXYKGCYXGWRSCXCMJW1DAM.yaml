@@ -1,0 +1,39 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/koment-dev/koment/main/schema/v1alpha/annotation.schema.json
+apiVersion: koment.dev/v1alpha
+kind: Annotation
+metadata:
+  id: 01M0VXYKGCYXGWRSCXCMJW1DAM
+  created: "2026-08-25T07:42:56Z"
+spec:
+  target:
+    file: internal/shim/record.go
+  type: why
+  body: |-
+    Assistant text and tool inputs are capped before they reach stdout because
+    every line here is shipped by the cluster's log collector: an agent that
+    pastes a large file into its reasoning would otherwise flood the log store
+    with one session. The untruncated text is still written to transcript.jsonl
+    on the workspace volume, so nothing is lost — only the searchable copy is
+    bounded.
+  anchor:
+    scope: excerpt
+    excerpt: "const (\n\trecordTextLimit  = 2000\n\trecordInputLimit = 500\n)"
+    before: "\t\"time\"\n)\n"
+    after: |2-
+
+      // Record event names. Every line carries stream: "dispatch-session" so a log
+      // query can select session records without matching on anything else.
+  author:
+    name: janpuc
+    email: janpuc@proton.me
+    kind: human
+    source: git-config
+  git:
+    commit: d41cf6787eaa35aa07e1ca30cb0bf1f3ddebd84a
+    path: internal/shim/record.go
+    line: 9
+status:
+  lastSeenLine: 9
+  resolution: ok
+  resolvedAt: "2026-08-25T07:42:56Z"
+  resolvedCommit: d41cf6787eaa35aa07e1ca30cb0bf1f3ddebd84a

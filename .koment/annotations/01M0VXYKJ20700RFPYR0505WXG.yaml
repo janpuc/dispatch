@@ -1,0 +1,36 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/koment-dev/koment/main/schema/v1alpha/annotation.schema.json
+apiVersion: koment.dev/v1alpha
+kind: Annotation
+metadata:
+  id: 01M0VXYKJ20700RFPYR0505WXG
+  created: "2026-08-25T07:42:56Z"
+spec:
+  target:
+    file: internal/shim/shim.go
+  type: why
+  body: |-
+    The report is mirrored into the record stream because report.md lives on the
+    workspace volume, which nothing can reach once the session pod is gone: no
+    Grafana, no MCP client, not the human. Emitting it as a record is what makes
+    the actual deliverable readable after the fact. The 20000-char cap is
+    generous compared with the per-line limits, since a report is the point of
+    the session.
+  anchor:
+    scope: excerpt
+    excerpt: func emitReport(recorder *Recorder, sessionDir string) {
+    before: "\treturn err.Error()\n}\n"
+    after: "\tpath := filepath.Join(sessionDir, reportFileName)\n\tif !fileExists(path) {\n\t\treturn"
+  author:
+    name: janpuc
+    email: janpuc@proton.me
+    kind: human
+    source: git-config
+  git:
+    commit: d41cf6787eaa35aa07e1ca30cb0bf1f3ddebd84a
+    path: internal/shim/shim.go
+    line: 119
+status:
+  lastSeenLine: 119
+  resolution: ok
+  resolvedAt: "2026-08-25T07:42:56Z"
+  resolvedCommit: d41cf6787eaa35aa07e1ca30cb0bf1f3ddebd84a

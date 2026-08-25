@@ -116,8 +116,6 @@ func errorText(err error) string {
 	return err.Error()
 }
 
-// emitReport mirrors the session's report into the record stream so the
-// deliverable is readable without reaching the workspace volume.
 func emitReport(recorder *Recorder, sessionDir string) {
 	path := filepath.Join(sessionDir, reportFileName)
 	if !fileExists(path) {

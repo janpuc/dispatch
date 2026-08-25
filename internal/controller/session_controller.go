@@ -320,8 +320,6 @@ func applyResult(session *dispatchv1alpha1.Session, result shim.Result) {
 	}
 }
 
-// observeSessionMetrics publishes the usage the runner reported, so token and
-// cost history survives the Session object and lands in Grafana (design §8).
 func observeSessionMetrics(session *dispatchv1alpha1.Session, agent *dispatchv1alpha1.Agent) {
 	model := session.Status.Model
 	if model == "" {
