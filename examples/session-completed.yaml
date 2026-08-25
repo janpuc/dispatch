@@ -27,7 +27,7 @@ status:
     inputTokens: 184203
     outputTokens: 12877
     cacheReadTokens: 1200432
-    apiEquivalentUSD: 3.71
+    apiEquivalentUSD: "3.71"
     turns: 23
   artifacts:
     transcript: nfs://nas/dispatch/sessions/duty/2026-08-24/a7f3/transcript.jsonl

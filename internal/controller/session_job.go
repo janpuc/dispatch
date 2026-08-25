@@ -41,9 +41,14 @@ const (
 	runnerUID              = int64(1000)
 )
 
+// SessionJobPrefix names every Job Dispatch creates for a Session. The
+// gateway filters events referencing these so Dispatch never reacts to its
+// own workloads.
+const SessionJobPrefix = "sess-"
+
 // SessionJobName is the Job name executing the given Session.
 func SessionJobName(s *dispatchv1alpha1.Session) string {
-	return truncateName("sess-" + s.Name)
+	return truncateName(SessionJobPrefix + s.Name)
 }
 
 // TaskConfigMapName is the ConfigMap carrying the Session's task.json.

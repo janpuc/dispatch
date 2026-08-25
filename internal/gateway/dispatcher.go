@@ -23,6 +23,7 @@ type Disposition string
 // Disposition values, mirrored into the events metric.
 const (
 	DispositionFiltered   Disposition = "filtered"
+	DispositionSelf       Disposition = "self"
 	DispositionDeduped    Disposition = "deduped"
 	DispositionSuppressed Disposition = "suppressed"
 	DispositionDispatched Disposition = "dispatched"
@@ -50,6 +51,12 @@ type Dispatcher struct {
 // survives, creates the Session.
 func (d *Dispatcher) HandleEvent(ctx context.Context, trigger *dispatchv1alpha1.Trigger, event Event) (Disposition, error) {
 	log := logf.FromContext(ctx).WithValues("trigger", trigger.Name, "event", event.Type, "fingerprint", event.Fingerprint)
+
+	if !trigger.Spec.AllowSelfEvents && IsSelfEvent(event) {
+		log.V(1).Info("dropped self-referential event")
+		metrics.EventsTotal.WithLabelValues(event.Source, string(DispositionSelf)).Inc()
+		return DispositionSelf, nil
+	}
 
 	matched, dedupeKey, err := d.Gate.Evaluate(trigger, event)
 	if err != nil {

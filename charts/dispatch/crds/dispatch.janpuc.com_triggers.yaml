@@ -66,6 +66,13 @@ spec:
                 required:
                 - name
                 type: object
+              allowSelfEvents:
+                description: |-
+                  AllowSelfEvents lets this trigger react to events about Dispatch's own
+                  session workloads. Off by default: a failing session Job raises a
+                  KubeJobFailed alert, and reacting to it creates another session that
+                  fails the same way (design §5 loop protection).
+                type: boolean
               budgetPolicy:
                 default: deferIfExhausted
                 description: BudgetPolicy says what to do when budgets or windows

@@ -22,7 +22,7 @@ spec:
     question: >-
       Can a read-only investigation of this alert produce value, or is it
       known-noisy / self-resolving? Answer INVESTIGATE or SKIP with one reason.
-    dailyBudgetUSD: 0.50
+    dailyBudgetUSD: "0.50"
     onBudgetExhausted: allow
   budgetPolicy: deferIfExhausted
   session:

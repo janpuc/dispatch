@@ -292,3 +292,61 @@ func TestCronSpecTimezone(t *testing.T) {
 		t.Error("bare spec altered")
 	}
 }
+
+func TestSelfEventFiltering(t *testing.T) {
+	selfAlert := Event{
+		Type:        "alertmanager.firing",
+		Source:      "alertmanager",
+		Fingerprint: "selfjob",
+		Data: map[string]any{
+			"status":      "firing",
+			"fingerprint": "selfjob",
+			"labels": map[string]any{
+				"alertname": "KubeJobFailed",
+				"severity":  "warning",
+				"namespace": "ai",
+				"job_name":  "sess-guardian-plex-1",
+			},
+		},
+	}
+	if !IsSelfEvent(selfAlert) {
+		t.Error("alert naming a dispatch session Job is not detected as self-referential")
+	}
+	if IsSelfEvent(firingEvent("critical", "media")) {
+		t.Error("ordinary alert misdetected as self-referential")
+	}
+
+	scheme := testScheme(t)
+	trigger := loadExampleTrigger(t, "trigger-alerts-to-duty.yaml")
+	trigger.Namespace = "dispatch"
+	trigger.Spec.When = ""
+
+	gate, err := NewCELGate()
+	if err != nil {
+		t.Fatal(err)
+	}
+	now := time.Date(2026, 8, 25, 9, 0, 0, 0, time.UTC)
+	fakeClient := fake.NewClientBuilder().
+		WithScheme(scheme).
+		WithObjects(testAgent(0), trigger).
+		WithStatusSubresource(&dispatchv1alpha1.Trigger{}, &dispatchv1alpha1.Session{}).
+		Build()
+	dispatcher := &Dispatcher{Client: fakeClient, Gate: gate, Clock: func() time.Time { return now }}
+
+	disposition, err := dispatcher.HandleEvent(context.Background(), trigger, selfAlert)
+	if err != nil || disposition != DispositionSelf {
+		t.Fatalf("disposition = %v err = %v, want self", disposition, err)
+	}
+	var sessions dispatchv1alpha1.SessionList
+	if err := fakeClient.List(context.Background(), &sessions); err != nil {
+		t.Fatal(err)
+	}
+	if len(sessions.Items) != 0 {
+		t.Errorf("self event created %d sessions, want 0", len(sessions.Items))
+	}
+
+	trigger.Spec.AllowSelfEvents = true
+	if disposition, _ = dispatcher.HandleEvent(context.Background(), trigger, selfAlert); disposition != DispositionDispatched {
+		t.Errorf("with allowSelfEvents disposition = %v, want dispatched", disposition)
+	}
+}

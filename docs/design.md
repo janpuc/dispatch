@@ -128,11 +128,15 @@ Declarative tool sets compiled into runner images; until then the Dockerfile is 
    refiring inside its cooldown) are counted in trigger status and metrics only;
    recording an object per refire would drown the record in noise.
 
-Loop protection, layered: agent commits carry `Dispatch-Session` trailers and push only to
-`dispatch/*` branches (their CI can be configured to skip or to never re-trigger Dispatch);
-triggers ignore events whose provenance is a Dispatch session unless explicitly opted in;
-per-fingerprint cooldowns; global concurrency cap; one-command kill switch (`dispatch
-pause` — annotates the gateway to drop all non-manual events).
+Loop protection, layered: the gateway drops events naming Dispatch's own session
+workloads unless a Trigger sets `allowSelfEvents` — this is not theoretical, it fired on
+day one: session Jobs that failed on an exhausted model quota raised `KubeJobFailed`
+alerts, which created fresh sessions, which failed and alerted again (2026-08-24; 20 of
+26 firing alerts were Dispatch's own Jobs). Beyond that: agent commits carry
+`Dispatch-Session` trailers and push only to `dispatch/*` branches (their CI can be
+configured to skip or to never re-trigger Dispatch); per-fingerprint cooldowns; global
+concurrency cap; one-command kill switch (`dispatch pause` — annotates the gateway to
+drop all non-manual events).
 
 ## 6. Sessions and runners
 

@@ -133,6 +133,12 @@ type TriggerSpec struct {
 	// +kubebuilder:default=deferIfExhausted
 	BudgetPolicy BudgetPolicy `json:"budgetPolicy,omitempty"`
 
+	// AllowSelfEvents lets this trigger react to events about Dispatch's own
+	// session workloads. Off by default: a failing session Job raises a
+	// KubeJobFailed alert, and reacting to it creates another session that
+	// fails the same way (design §5 loop protection).
+	AllowSelfEvents bool `json:"allowSelfEvents,omitempty"`
+
 	// Session shapes the created session.
 	Session TriggerSessionTemplate `json:"session"`
 }

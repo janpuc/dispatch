@@ -31,7 +31,7 @@ spec:
     daily:
       maxSessions: 20
       maxCostUSD: 15
-    subscriptionWindowReserve: 0.25
+    subscriptionWindowReserve: "0.25"
   a2a:
     expose: true
     skills:
